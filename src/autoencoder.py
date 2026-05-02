@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import json
+import pickle
 from metrics import rmse, mae, ndcg_at_k, recall_at_k
 
 
@@ -119,12 +120,18 @@ def train_autoencoder(splits_file, latent_dim=32, epochs=20, patience=5, device=
     
     # Save
     models_dir = Path(__file__).parent.parent / "models/autoencoder"
-    models_dir.mkdir(exist_ok=True)
+    models_dir.mkdir(parents=True, exist_ok=True)
     
-    model_path = models_dir / "autoencoder.pt"
-    torch.save(model.state_dict(), model_path)
+    model_data = {
+        'state_dict': model.state_dict(),
+        'latent_dim': latent_dim,
+        'n_items': n_items
+    }
+    model_path = models_dir / f"autoencoder_latent{latent_dim}.pkl"
+    with open(model_path, 'wb') as f:
+        pickle.dump(model_data, f)
     
-    metrics_path = models_dir / "autoencoder_metrics.json"
+    metrics_path = models_dir / f"autoencoder_latent{latent_dim}_metrics.json"
     with open(metrics_path, 'w') as f:
         json.dump(
             {
