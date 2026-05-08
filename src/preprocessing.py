@@ -39,13 +39,23 @@ def preprocess(seed=42, val_ratio=0.1, test_ratio=0.1):
             user_groups[user_idx] = []
         user_groups[user_idx].append((item_idx, rating))
     
-    # Split users into train/val/test (ensuring each user has ratings in each set)
+    # Validate split ratios before slicing users
+    if val_ratio < 0 or test_ratio < 0:
+        raise ValueError("val_ratio and test_ratio must be non-negative")
+    if val_ratio + test_ratio >= 1.0:
+        raise ValueError("val_ratio + test_ratio must be less than 1.0")
+
+    # Split users into train/val/test.
+    # Note: train_users are used only for training, while val_users/test_users include held-out ratings for validation/test.
     users = list(user_groups.keys())
     np.random.shuffle(users)
     
     n_val = int(len(users) * val_ratio)
     n_test = int(len(users) * test_ratio)
     n_train = len(users) - n_val - n_test
+    
+    if n_train <= 0:
+        raise ValueError("Split ratios leave no users for training; reduce val_ratio/test_ratio")
     
     train_users = users[:n_train]
     val_users = users[n_train:n_train + n_val]
@@ -97,9 +107,13 @@ def preprocess(seed=42, val_ratio=0.1, test_ratio=0.1):
         if len(user_ratings) > 0:
             user_means[u] = user_ratings.mean()
     
-    # Center the training matrix
+    # Center the training matrix by subtracting each user's mean from its nonzero values
     train_centered = train_matrix.copy()
-    train_centered.data -= user_means[train_centered.indices]
+    for user_idx in range(n_users):
+        row_start = train_centered.indptr[user_idx]
+        row_end = train_centered.indptr[user_idx + 1]
+        if row_end > row_start:
+            train_centered.data[row_start:row_end] -= user_means[user_idx]
     
     # Save
     output_dir = DATA_PROCESSED_DIR / f"seed_{seed}"
@@ -108,7 +122,7 @@ def preprocess(seed=42, val_ratio=0.1, test_ratio=0.1):
     # Convert sparse matrices to dense for compatibility with existing code
     # TODO: Update downstream code to handle sparse matrices
     train_centered_dense = train_centered.toarray()
-    train_mask_dense = (train_matrix > 0).toarray().astype(bool)
+    train_mask_dense = (train_matrix != 0).toarray().astype(bool)
     
     splits = {
         'train_filled': train_centered_dense,

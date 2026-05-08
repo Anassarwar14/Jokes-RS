@@ -112,7 +112,7 @@ def ndcg_at_k_full(predictions, train_mask, val_user, val_item, val_rating, k=10
             
         # Compute DCG@k
         dcg = 0.0
-        for pos in rel_positions[:k]:
+        for pos in rel_positions:
             if pos < k:  # Only count if within top-k
                 dcg += val_rel[np.where(val_items == sorted_candidates[pos])[0][0]] / np.log2(pos + 2)
         

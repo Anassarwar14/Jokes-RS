@@ -9,18 +9,30 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from preprocessing import preprocess
-from svd import train_svd
+from svd import train_pmf
 from autoencoder import train_autoencoder
 from metrics import rmse, mae, ndcg_at_k_full, recall_at_k_full
 
 
 def evaluate_model(model_path, splits_file):
-    """Evaluate a saved model with full ranking metrics."""
-    import pickle
+    """Evaluate a saved model with full ranking metrics.
+    
+    Warning: Only load model files from trusted sources. While npz and torch formats
+    are safer than pickle, always verify model provenance before loading.
+    """
+    import torch
     
     print(f"Loading model from {model_path}...")
-    with open(model_path, 'rb') as f:
-        model_data = pickle.load(f)
+    model_path = Path(model_path)
+    
+    if model_path.suffix == '.npz':
+        # Load NPZ format (PMF)
+        model_data = np.load(model_path, allow_pickle=False)
+        # Convert scalar arrays back to scalars
+        model_data = {k: (v.item() if v.size == 1 else v) for k, v in model_data.items()}
+    else:
+        # Load torch format (autoencoder) with map_location for portability
+        model_data = torch.load(model_path, map_location='cpu')
     
     print(f"Loading splits from {splits_file}...")
     data = np.load(splits_file, allow_pickle=True)
@@ -145,7 +157,7 @@ def main():
         if not splits_file.exists():
             print(f"Error: {splits_file} not found. Run 'preprocess' first.")
             sys.exit(1)
-        train_svd(splits_file, k=args.k, sigma_u=args.sigma_u, sigma_v=args.sigma_v, 
+        train_pmf(splits_file, k=args.k, sigma_u=args.sigma_u, sigma_v=args.sigma_v, 
                  sigma_r=args.sigma_r, learning_rate=args.learning_rate, 
                  n_epochs=args.n_epochs, batch_size=args.batch_size, seed=args.seed)
     
