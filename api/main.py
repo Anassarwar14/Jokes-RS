@@ -1,9 +1,14 @@
 """Main FastAPI application."""
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-from config import settings
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from api.database import init_db
+from api.config import settings
 from api.routes import sessions, ratings, recommendations, models, jokes
 
 # Configure logging
@@ -68,4 +73,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

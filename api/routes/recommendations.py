@@ -2,12 +2,12 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from api.config import settings
 from api.database import get_db
 from api.models import UserRating, SessionModel
 from api.schemas import RecommendationResponse, RecommendationItem
 from api.services.joke_catalog import JokeCatalog
 from api.services.model_loader import ModelLoader, InferenceService
-from config import settings
 import numpy as np
 import logging
 

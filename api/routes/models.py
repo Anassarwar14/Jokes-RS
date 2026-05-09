@@ -1,8 +1,8 @@
 """Model information and listing endpoints."""
 from fastapi import APIRouter, HTTPException, status
+from api.config import settings
 from api.schemas import ModelInfo, ModelsListResponse
 from api.services.model_loader import ModelLoader
-from config import settings
 import logging
 from pathlib import Path
 

@@ -18,6 +18,9 @@ def pmf_factorization(train_matrix, train_mask, k=10, sigma_u=0.1, sigma_v=0.1, 
     """
     np.random.seed(seed)
     n_users, n_items = train_matrix.shape
+    # Use float64 for numerical stability
+    train_matrix = train_matrix.astype(np.float64)
+    train_mask = train_mask.astype(bool)
     
     # Initialize user and item factors
     U = np.random.normal(0, sigma_u, (n_users, k))
@@ -64,14 +67,16 @@ def pmf_factorization(train_matrix, train_mask, k=10, sigma_u=0.1, sigma_v=0.1, 
             
             # Compute errors
             errors = batch_ratings - batch_pred
-            
+
             # Compute batch gradients before updating parameters
             batch_U = U[batch_users]
             batch_V = V[batch_items]
-            grad_U = learning_rate * (errors[:, np.newaxis] * batch_V - lambda_u * batch_U)
-            grad_V = learning_rate * (errors[:, np.newaxis] * batch_U - lambda_v * batch_V)
-            grad_user_bias = learning_rate * (errors - lambda_r * user_bias[batch_users])
-            grad_item_bias = learning_rate * (errors - lambda_r * item_bias[batch_items])
+            batch_len = max(1, len(batch_users))
+            scale = learning_rate / float(batch_len)
+            grad_U = scale * (errors[:, np.newaxis] * batch_V - lambda_u * batch_U)
+            grad_V = scale * (errors[:, np.newaxis] * batch_U - lambda_v * batch_V)
+            grad_user_bias = scale * (errors - lambda_r * user_bias[batch_users])
+            grad_item_bias = scale * (errors - lambda_r * item_bias[batch_items])
 
             # Use np.add.at to accumulate updates for repeated users/items in the batch
             np.add.at(U, batch_users, grad_U)
@@ -80,9 +85,10 @@ def pmf_factorization(train_matrix, train_mask, k=10, sigma_u=0.1, sigma_v=0.1, 
             np.add.at(item_bias, batch_items, grad_item_bias)
         # Optional: Print progress every 10 epochs
         if (epoch + 1) % 10 == 0:
-            # Compute training RMSE
-            train_pred = global_bias + user_bias[:, np.newaxis] + item_bias[np.newaxis, :] + U @ V.T
-            train_rmse = np.sqrt(np.mean((train_pred[train_mask] - observed_ratings) ** 2))
+            # Compute training RMSE using only observed entries (avoid forming full matrix)
+            train_pred_obs = (global_bias + user_bias[observed_users] + item_bias[observed_items] +
+                               np.sum(U[observed_users] * V[observed_items], axis=1))
+            train_rmse = np.sqrt(np.mean((train_pred_obs - observed_ratings) ** 2))
             print(f"  Epoch {epoch + 1}/{n_epochs} - Train RMSE: {train_rmse:.4f}")
     
     return U, V, global_bias, user_bias, item_bias

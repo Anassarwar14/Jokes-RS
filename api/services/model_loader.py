@@ -5,7 +5,7 @@ import pickle
 from pathlib import Path
 from typing import Optional, Tuple
 import logging
-from config import settings
+from api.config import settings
 
 logger = logging.getLogger(__name__)
 
