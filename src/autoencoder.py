@@ -5,7 +5,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import json
-from metrics import rmse, mae, ndcg_at_k, recall_at_k
+import sys
+from pathlib import Path
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.metrics import rmse, mae, ndcg_at_k, recall_at_k
 
 
 class Autoencoder(nn.Module):
@@ -119,12 +125,17 @@ def train_autoencoder(splits_file, latent_dim=32, epochs=20, patience=5, device=
     
     # Save
     models_dir = Path(__file__).parent.parent / "models/autoencoder"
-    models_dir.mkdir(exist_ok=True)
+    models_dir.mkdir(parents=True, exist_ok=True)
     
-    model_path = models_dir / "autoencoder.pt"
-    torch.save(model.state_dict(), model_path)
+    model_data = {
+        'state_dict': {k: v.cpu() for k, v in model.state_dict().items()},
+        'latent_dim': latent_dim,
+        'n_items': n_items
+    }
+    model_path = models_dir / f"autoencoder_latent{latent_dim}.pt"
+    torch.save(model_data, model_path)
     
-    metrics_path = models_dir / "autoencoder_metrics.json"
+    metrics_path = models_dir / f"autoencoder_latent{latent_dim}_metrics.json"
     with open(metrics_path, 'w') as f:
         json.dump(
             {
